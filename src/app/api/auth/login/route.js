@@ -21,23 +21,13 @@ export async function POST(request) {
 
     // Create token with user data
     const token = createToken({
-      userId: user._id.toString(),
+      userId: user._id,
       email: user.email,
       name: user.name
     });
 
-    // Create response object first
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        name: user.name,
-        email: user.email
-      }
-    });
-
-    // Set cookie on the response object
-    const cookieStore = await cookies();
-    await cookieStore.set({
+    // Set cookie
+    cookies().set({
       name: 'token',
       value: token,
       httpOnly: true,
@@ -47,13 +37,13 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
-    return response;
+    return NextResponse.json({ success: true });
 
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Authentication failed' },
-      { status: 500 }
+      { error: error.message },
+      { status: 401 }
     );
   }
-} 
+}

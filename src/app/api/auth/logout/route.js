@@ -3,19 +3,19 @@ import { cookies } from 'next/headers';
 
 export async function POST() {
   try {
-    // Create the response
-    const response = NextResponse.json({ success: true });
+    // Remove the authentication token
+    cookies().delete('token');
     
-    // Clear the token cookie
-    const cookieStore = await cookies();
-    await cookieStore.delete('token');
-    
-    return response;
+    return NextResponse.json({ 
+      success: true,
+      message: 'Logged out successfully' 
+    });
   } catch (error) {
-    console.error('Logout failed:', error);
-    return NextResponse.json(
-      { error: 'Logout failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ 
+      success: false,
+      error: error.message 
+    }, { 
+      status: 500 
+    });
   }
-} 
+}

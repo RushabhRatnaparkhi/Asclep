@@ -2,197 +2,208 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import { requestNotificationPermission } from '@/utils/notifications';
-import { reminderService } from '@/services/reminderService';
-import { useRouter } from 'next/navigation';
-import MedicationLogButton from '@/components/MedicationLogButton';
+import NotificationConsent from './NotificationConsent';
 
-export default function MedicationList({ medications = [], onUpdate }) {
-  const router = useRouter();
-  const [deletingId, setDeletingId] = useState(null);
-  const [updatingId, setUpdatingId] = useState(null);
+export default function MedicationList() {
+  const [medications, setMedications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
 
-  const handleDelete = async (id) => {
+  const fetchMedications = async () => {
     try {
-      setDeletingId(id);
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/medications/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!res.ok) throw new Error('Failed to delete medication');
-
-      toast.success('Medication deleted successfully');
-      onUpdate();
+      const response = await fetch('/api/medications');
+      if (!response.ok) throw new Error('Failed to fetch medications');
+      const data = await response.json();
+      setMedications(data.medications || []);
     } catch (error) {
-      toast.error('Failed to delete medication');
-      console.error('Error deleting medication:', error);
+      toast.error(error.message);
+      setMedications([]);
     } finally {
-      setDeletingId(null);
+      setIsLoading(false);
     }
   };
 
-  const toggleReminder = async (medication) => {
-    try {
-      if (!medication.reminderEnabled) {
-        // Request permission when enabling reminders
-        const permissionGranted = await requestNotificationPermission();
-        if (!permissionGranted) {
-          toast.error('Please enable notifications to use reminders');
-          return;
-        }
-      }
+  useEffect(() => {
+    fetchMedications();
+  }, []);
 
-      // Update reminder status in database
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/medications/${medication._id}`, {
-        method: 'PATCH',
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const formData = {
+        name: e.target.name.value,
+        dosage: e.target.dosage.value,
+        frequency: e.target.frequency.value,
+        startDate: e.target.startDate.value || new Date().toISOString(),
+        dosageTime: e.target.dosageTime.value,
+        instructions: e.target.instructions.value,
+        status: 'active',
+      };
+
+      const response = await fetch('/api/medications', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          reminderEnabled: !medication.reminderEnabled
-        })
+        body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error('Failed to update reminder settings');
-
-      const { medication: updatedMedication } = await res.json();
-      
-      // Schedule or cancel reminders
-      if (updatedMedication.reminderEnabled) {
-        reminderService.scheduleReminder(updatedMedication);
-      } else {
-        reminderService.cancelReminder(updatedMedication._id);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add medication');
       }
 
-      toast.success(
-        medication.reminderEnabled 
-          ? 'Reminders disabled' 
-          : 'Reminders enabled'
-      );
+      toast.success('Medication added successfully');
+      setShowForm(false);
+      fetchMedications();
+      e.target.reset();
     } catch (error) {
-      toast.error('Failed to update reminder settings');
+      toast.error(error.message);
     }
   };
 
-  // Initialize reminders for enabled medications
-  useEffect(() => {
-    medications.forEach(medication => {
-      if (medication.reminderEnabled) {
-        reminderService.scheduleReminder(medication);
-      }
-    });
-
-    // Cleanup on unmount
-    return () => {
-      medications.forEach(medication => {
-        reminderService.cancelReminder(medication._id);
-      });
-    };
-  }, [medications]);
-
-  if (!medications.length) {
-    return (
-      <div className="text-center py-8 bg-white rounded-lg shadow">
-        <p className="text-gray-500">No medications added yet.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="divide-y divide-gray-200">
-        {medications.map((medication) => (
-          <div key={medication._id} className="p-6 hover:bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div 
-                onClick={() => router.push(`/medications/${medication._id}`)}
-                className="cursor-pointer flex-grow"
-              >
-                <h3 className="text-lg font-medium text-gray-900">
-                  {medication.name}
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  {medication.dosage} • {medication.frequency}
-                </p>
-                <div className="mt-2 flex items-center space-x-2">
-                  {medication.timeOfDay.map((time) => (
-                    <span
-                      key={time}
-                      className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                    >
-                      {time}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MedicationLogButton 
-                  medication={medication}
-                  onLog={onUpdate}
-                />
-                <button
-                  onClick={() => router.push(`/medications/${medication._id}`)}
-                  className="text-blue-600 hover:text-blue-800"
-                  title="View Details"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => toggleReminder(medication)}
-                  disabled={updatingId === medication._id}
-                  className={`${
-                    medication.reminderEnabled 
-                      ? 'text-green-600 hover:text-green-800' 
-                      : 'text-gray-400 hover:text-gray-600'
-                  } disabled:opacity-50`}
-                  title={medication.reminderEnabled ? 'Disable reminders' : 'Enable reminders'}
-                >
-                  {updatingId === medication._id ? (
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
-                  )}
-                </button>
-                <button
-                  onClick={() => handleDelete(medication._id)}
-                  disabled={deletingId === medication._id}
-                  className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                >
-                  {deletingId === medication._id ? (
-                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            </div>
-            {medication.notes && (
-              <p className="mt-3 text-sm text-gray-500">
-                {medication.notes}
-              </p>
-            )}
-          </div>
-        ))}
+    <div className="p-6 max-w-4xl mx-auto">
+      <NotificationConsent />
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Medications</h2>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md transition duration-200 ease-in-out"
+        >
+          {showForm ? '× Cancel' : '+ Add Medication'}
+        </button>
       </div>
+
+      {showForm && (
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-lg mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                Medication Name*
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                required
+                placeholder="Enter medication name"
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="dosage" className="block text-sm font-medium text-gray-700 mb-2">
+                Dosage*
+              </label>
+              <input
+                type="text"
+                id="dosage"
+                name="dosage"
+                required
+                placeholder="e.g., 50mg, 2 tablets"
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-2">
+                Frequency*
+              </label>
+              <select
+                id="frequency"
+                name="frequency"
+                required
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">Select frequency</option>
+                <option value="Once daily">Once daily</option>
+                <option value="Twice daily">Twice daily</option>
+                <option value="Three times daily">Three times daily</option>
+                <option value="Every 4 hours">Every 4 hours</option>
+                <option value="Every 6 hours">Every 6 hours</option>
+                <option value="Every 8 hours">Every 8 hours</option>
+                <option value="As needed">As needed</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="dosageTime" className="block text-sm font-medium text-gray-700 mb-2">
+                Time of First Dose*
+              </label>
+              <input
+                type="time"
+                id="dosageTime"
+                name="dosageTime"
+                required
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="startDate" className="block text-sm font-medium text-gray-700 mb-2">
+                Start Date*
+              </label>
+              <input
+                type="date"
+                id="startDate"
+                name="startDate"
+                required
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="instructions" className="block text-sm font-medium text-gray-700 mb-2">
+                Special Instructions
+              </label>
+              <textarea
+                id="instructions"
+                name="instructions"
+                rows="3"
+                placeholder="Enter any special instructions (e.g., take with food)"
+                className="w-full px-4 py-2 rounded-md border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              ></textarea>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end space-x-4">
+            <button
+              type="button"
+              onClick={() => setShowForm(false)}
+              className="px-4 py-2 text-gray-700 hover:text-gray-900"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition duration-200 ease-in-out"
+            >
+              Save Medication
+            </button>
+          </div>
+        </form>
+      )}
+
+      {isLoading ? (
+        <div>Loading medications...</div>
+      ) : !medications.length ? (
+        <div>No medications found.</div>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {medications.map((medication) => (
+            <div key={medication._id} className="bg-white p-4 rounded-lg shadow">
+              <h3 className="font-bold text-lg mb-2">{medication.name}</h3>
+              <p className="text-gray-600">Dosage: {medication.dosage}</p>
+              <p className="text-gray-600">Frequency: {medication.frequency}</p>
+              {medication.instructions && (
+                <p className="text-gray-600 mt-2">Instructions: {medication.instructions}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-} 
+}

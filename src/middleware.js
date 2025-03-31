@@ -1,40 +1,38 @@
-import { NextResponse } from 'next/server'
-import { verifyAuth } from '@/lib/auth'
+import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
-export async function middleware(request) {
-  // Get token from cookies
-  const token = request.cookies.get('token')
+export function middleware(request) {
+  const isPublicPath = request.nextUrl.pathname === '/login' || 
+                      request.nextUrl.pathname === '/register' ||
+                      request.nextUrl.pathname.startsWith('/api/auth');
 
-  // Paths that don't require authentication
-  const publicPaths = ['/login', '/register']
-  const isPublicPath = publicPaths.includes(request.nextUrl.pathname)
-  
-  try {
-    if (!token && !isPublicPath) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+  const hasToken = request.cookies.has('token');
 
-    if (token && isPublicPath) {
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-
-    return NextResponse.next()
-  } catch (error) {
-    // If token verification fails, redirect to login
-    if (!isPublicPath) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    return NextResponse.next()
+  // Allow public paths without authentication
+  if (isPublicPath) {
+    return NextResponse.next();
   }
+
+  // No token, redirect to login
+  if (!hasToken) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  // Has token, allow request
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    '/',
-    '/login',
-    '/register',
-    '/medications/:path*',
-    '/profile/:path*',
-    '/history/:path*'
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api/auth (auth API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - login
+     * - register
+     */
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|login|register).*)',
   ],
-} 
+};
