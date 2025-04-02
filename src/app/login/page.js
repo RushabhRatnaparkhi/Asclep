@@ -5,37 +5,45 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 
-export default function Login() {
-  const [isLoading, setIsLoading] = useState(false);
+export default function LoginPage() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
+      // First, attempt login
+      const loginResponse = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           email: e.target.email.value,
           password: e.target.password.value,
         }),
+        credentials: 'include',
       });
 
-      const data = await res.json();
+      const loginData = await loginResponse.json();
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
+      if (!loginResponse.ok) {
+        throw new Error(loginData.error || 'Login failed');
       }
 
+      // Add a small delay to ensure cookie is set
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       toast.success('Logged in successfully');
-      router.push('/');
-      router.refresh();
+      
+      // Use window.location for a full page refresh
+      window.location.href = '/';
+      
     } catch (error) {
       console.error('Login error:', error);
-      toast.error(error.message || 'Failed to login');
-    } finally {
+      toast.error(error.message);
       setIsLoading(false);
     }
   };
@@ -100,4 +108,4 @@ export default function Login() {
       </div>
     </div>
   );
-} 
+}

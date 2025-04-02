@@ -19,11 +19,11 @@ export default function Home() {
         const data = await res.json();
 
         if (!data.authenticated) {
-          router.push('/login');
+          router.replace('/login');
         }
       } catch (error) {
         toast.error('Authentication failed');
-        router.push('/login');
+        router.replace('/login');
       } finally {
         setIsLoading(false);
       }

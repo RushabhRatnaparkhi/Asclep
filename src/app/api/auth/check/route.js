@@ -4,15 +4,22 @@ import { verifyAuth } from '@/lib/auth';
 export async function GET() {
   try {
     const user = await verifyAuth();
+    
+    if (!user) {
+      return NextResponse.json({ 
+        authenticated: false 
+      }, { 
+        status: 401 
+      });
+    }
+
     return NextResponse.json({ 
-      authenticated: true, 
-      user,
-      message: 'Authentication successful'
+      authenticated: true,
+      user
     });
   } catch (error) {
-    console.error('Auth check failed:', error);
     return NextResponse.json({ 
-      authenticated: false, 
+      authenticated: false,
       error: error.message 
     }, { 
       status: 401 

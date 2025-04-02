@@ -26,8 +26,11 @@ export async function POST(request) {
       name: user.name
     });
 
+    // Get cookie store and await it
+    const cookieStore = await cookies();
+    
     // Set cookie
-    cookies().set({
+    cookieStore.set({
       name: 'token',
       value: token,
       httpOnly: true,

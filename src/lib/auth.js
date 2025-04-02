@@ -12,18 +12,17 @@ export function createToken(payload) {
 }
 
 export async function verifyAuth() {
-  try {
-    const cookieStore = await cookies();
-    const token = await cookieStore.get('token')?.value;
-    
-    if (!token) {
-      throw new Error('No token found');
-    }
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
 
+  if (!token) {
+    return null;
+  }
+
+  try {
     const decoded = jwt.verify(token, JWT_SECRET);
     return decoded;
   } catch (error) {
-    console.error('Token verification failed:', error);
-    throw new Error('Invalid token');
+    return null;
   }
 }
