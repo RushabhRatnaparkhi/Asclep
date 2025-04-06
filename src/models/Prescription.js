@@ -5,36 +5,22 @@ const prescriptionSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  imageUrl: {
+  title: {
     type: String,
+    required: true
   },
-  medication: {
+  fileUrl: {
     type: String,
-    required: function() {
-      return !this.imageUrl; // Only required if no image
-    }
+    required: true
   },
-  dosage: {
+  fileType: {
     type: String,
-    required: function() {
-      return !this.imageUrl; // Only required if no image
-    }
+    required: true,
+    enum: ['image/jpeg', 'image/png', 'application/pdf']
   },
-  frequency: {
-    type: String,
-    required: function() {
-      return !this.imageUrl; // Only required if no image
-    }
+  notes: {
+    type: String
   },
-  startDate: {
-    type: Date,
-    required: function() {
-      return !this.imageUrl; // Only required if no image
-    }
-  },
-  endDate: Date,
-  instructions: String,
-  prescribedBy: String,
   status: {
     type: String,
     enum: ['active', 'completed', 'discontinued'],
@@ -44,13 +30,8 @@ const prescriptionSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add a pre-save validation
-prescriptionSchema.pre('save', function(next) {
-  if (!this.imageUrl && (!this.medication || !this.dosage || !this.frequency || !this.startDate)) {
-    next(new Error('Either image or prescription details are required'));
-  }
-  next();
-});
+// Add index for querying user prescriptions
+prescriptionSchema.index({ userId: 1, status: 1 });
 
 const Prescription = mongoose.models.Prescription || mongoose.model('Prescription', prescriptionSchema);
 export default Prescription;

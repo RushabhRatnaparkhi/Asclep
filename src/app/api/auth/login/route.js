@@ -21,16 +21,14 @@ export async function POST(request) {
 
     // Create token with user data
     const token = createToken({
-      userId: user._id,
+      userId: user._id.toString(), // Make sure to convert ObjectId to string
       email: user.email,
       name: user.name
     });
 
-    // Get cookie store and await it
-    const cookieStore = await cookies();
+    const response = NextResponse.json({ success: true });
     
-    // Set cookie
-    cookieStore.set({
+    response.cookies.set({
       name: 'token',
       value: token,
       httpOnly: true,
@@ -40,7 +38,7 @@ export async function POST(request) {
       maxAge: 7 * 24 * 60 * 60 // 7 days
     });
 
-    return NextResponse.json({ success: true });
+    return response;
 
   } catch (error) {
     console.error('Login error:', error);

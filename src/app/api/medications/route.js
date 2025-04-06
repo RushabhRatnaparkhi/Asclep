@@ -29,16 +29,21 @@ export async function POST(request) {
 export async function GET() {
   try {
     const user = await verifyAuth();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     await dbConnect();
-    
-    const medications = await Medication.find({ userId: user.userId });
+    const userId = user.userId;
+
+    const medications = await Medication.find({ userId });
     return NextResponse.json({ medications });
+
   } catch (error) {
-    return NextResponse.json({ 
-      error: error.message,
-      medications: [] 
-    }, { 
-      status: error.message === 'Invalid token' ? 401 : 500 
-    });
+    console.error('Medications error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch medications' },
+      { status: 500 }
+    );
   }
 }

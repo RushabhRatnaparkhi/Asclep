@@ -8,19 +8,15 @@ import Appointment from '@/models/Appointment';
 
 export async function GET(request) {
   try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const user = await verifyAuth();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = await verifyAuth(token);
-    const userId = decoded.userId;
+    await dbConnect();
+
+    // Use user.userId for queries
+    const userId = user.userId;
 
     // Get today's date boundaries
     const today = new Date();
@@ -79,4 +75,4 @@ export async function GET(request) {
       { status: 500 }
     );
   }
-} 
+}

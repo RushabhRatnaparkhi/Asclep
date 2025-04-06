@@ -5,6 +5,17 @@ const UserSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+  pushSubscription: {
+    endpoint: String,
+    keys: {
+      p256dh: String,
+      auth: String
+    }
+  },
+  notificationsEnabled: {
+    type: Boolean,
+    default: false
+  },
   email: { 
     type: String, 
     required: true, 
@@ -28,4 +39,4 @@ const UserSchema = new mongoose.Schema({
   timestamps: true
 });
 
-export default mongoose.models.User || mongoose.model('User', UserSchema); 
+export default mongoose.models.User || mongoose.model('User', UserSchema);

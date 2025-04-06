@@ -3,7 +3,7 @@ import { verifyAuth } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 
-export async function POST(request) {
+export async function GET() {
   try {
     const user = await verifyAuth();
     if (!user) {
@@ -11,17 +11,15 @@ export async function POST(request) {
     }
 
     await dbConnect();
-    const subscription = await request.json();
+    const userData = await User.findById(user.userId);
+    
+    const isSubscribed = !!(userData?.pushSubscription?.endpoint);
 
-    await User.findByIdAndUpdate(user.userId, {
-      pushSubscription: subscription
-    });
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ isSubscribed });
   } catch (error) {
-    console.error('Subscription error:', error);
+    console.error('Failed to check notification status:', error);
     return NextResponse.json(
-      { error: 'Failed to save notification subscription' },
+      { error: 'Failed to check notification status' },
       { status: 500 }
     );
   }

@@ -6,19 +6,13 @@ import mongoose from 'mongoose';
 
 export async function GET(request) {
   try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+    const user = await verifyAuth();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const token = authHeader.split(' ')[1];
-    const decoded = await verifyAuth(token);
-    const userId = decoded.userId;
+    await dbConnect();
+    const userId = user.userId;
 
     // Get recent medication logs with medication details
     const recentLogs = await MedicationLog.aggregate([
@@ -63,4 +57,4 @@ export async function GET(request) {
       { status: 500 }
     );
   }
-} 
+}
