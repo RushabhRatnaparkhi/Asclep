@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
-import Medication from '@/models/Medication';
+import Prescription from '@/models/Prescription';
 
 export async function GET(request) {
   try {
@@ -18,10 +18,9 @@ export async function GET(request) {
 
     await dbConnect();
 
-    const prescriptions = await Medication.find({ 
-      userId: decoded.userId,
-      'prescriptionFile.url': { $exists: true } 
-    }).select('prescriptionFile createdAt');
+    const prescriptions = await Prescription.find({ 
+      userId: decoded.userId 
+    }).sort({ createdAt: -1 });
 
     return NextResponse.json(prescriptions);
 

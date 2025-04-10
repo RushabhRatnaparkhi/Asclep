@@ -318,13 +318,15 @@ export default function MedicationsPage() {
                   >
                     View Details
                   </Link>
-                  <span className={`px-2 py-1 rounded-full text-sm ${
-                    medication.nextDoseTime && new Date(medication.nextDoseTime) < new Date()
-                      ? 'bg-red-100 text-red-800'
-                      : 'bg-blue-100 text-blue-800'
-                  }`}>
-                    {medication.nextDoseTime ? getTimeUntilNextDose(medication.nextDoseTime) : 'No schedule'}
-                  </span>
+                  {medication.nextDoseTime && (
+                    <span className={`px-2 py-1 rounded-full text-sm ${
+                      new Date(medication.nextDoseTime) < new Date()
+                        ? 'bg-red-100 text-red-800'
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {getTimeUntilNextDose(medication.nextDoseTime)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

@@ -96,3 +96,63 @@ export async function GET(request, { params }) {
     );
   }
 }
+
+export async function PUT(request, context) {
+  try {
+    const id = context.params.id;
+    const token = request.cookies.get('token')?.value;
+    
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Not authenticated' }, 
+        { status: 401 }
+      );
+    }
+
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json(
+        { error: 'Invalid token' }, 
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+
+    const data = await request.json();
+    
+    // Calculate next dose time
+    const startDateTime = new Date(data.startDate);
+    const [hours, minutes] = data.firstDoseTime.split(':');
+    startDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+    const updateData = {
+      ...data,
+      dosageTime: data.firstDoseTime,
+      nextDoseTime: startDateTime,
+      userId: decoded.userId
+    };
+
+    const medication = await Medication.findOneAndUpdate(
+      { _id: id, userId: decoded.userId },
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!medication) {
+      return NextResponse.json(
+        { error: 'Medication not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(medication);
+
+  } catch (error) {
+    console.error('Update medication error:', error);
+    return NextResponse.json(
+      { error: 'Failed to update medication' },
+      { status: 500 }
+    );
+  }
+}

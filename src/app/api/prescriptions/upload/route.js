@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
-import Medication from '@/models/Medication';
+import Prescription from '@/models/Prescription';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -47,13 +47,11 @@ export async function POST(request) {
     await dbConnect();
 
     // Create prescription record
-    const prescription = await Medication.create({
+    const prescription = await Prescription.create({
       userId: decoded.userId,
-      prescriptionFile: {
-        url: uploadResponse.secure_url,
-        filename: file.name,
-        contentType: file.type
-      }
+      filename: file.name,
+      url: uploadResponse.secure_url,
+      contentType: file.type
     });
 
     return NextResponse.json(prescription, { status: 201 });
@@ -61,7 +59,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload prescription' },
+      { error: error.message || 'Failed to upload prescription' },
       { status: 500 }
     );
   }
