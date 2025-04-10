@@ -56,6 +56,29 @@ export default function PrescriptionsPage() {
     }
   }
 
+  async function handleDelete(prescriptionId) {
+    if (!window.confirm('Are you sure you want to delete this prescription?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/prescriptions/${prescriptionId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete prescription');
+      }
+
+      toast.success('Prescription deleted successfully');
+      fetchPrescriptions();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete prescription');
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -90,10 +113,23 @@ export default function PrescriptionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {prescriptions.map((prescription) => (
               <div key={prescription._id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <p className="text-lg font-medium text-gray-900 mb-2">{prescription.filename}</p>
-                <p className="text-sm text-gray-500 mb-4">
-                  Uploaded on {new Date(prescription.createdAt).toLocaleDateString()}
-                </p>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-lg font-medium text-gray-900 mb-2">{prescription.filename}</p>
+                    <p className="text-sm text-gray-500 mb-4">
+                      Uploaded on {new Date(prescription.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleDelete(prescription._id)}
+                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                    title="Delete prescription"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
                 <div className="flex justify-end space-x-2">
                   <a
                     href={prescription.url}

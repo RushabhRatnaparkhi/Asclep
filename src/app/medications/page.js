@@ -1,15 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'react-hot-toast';
+import Link from 'next/link';
 import { getTimeUntilNextDose } from '@/utils/timeUtils';
 
 export default function MedicationsPage() {
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [medications, setMedications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(searchParams.get('showForm') === 'true');
   const [formData, setFormData] = useState({
     name: '',
     dosage: '',
@@ -34,6 +36,15 @@ export default function MedicationsPage() {
   useEffect(() => {
     fetchMedications();
   }, []);
+
+  useEffect(() => {
+    // Update URL when form visibility changes
+    if (showForm) {
+      router.push('/medications?showForm=true');
+    } else {
+      router.push('/medications');
+    }
+  }, [showForm, router]);
 
   async function fetchMedications() {
     try {
@@ -106,6 +117,29 @@ export default function MedicationsPage() {
       toast.error(error.message);
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleDelete(medicationId) {
+    if (!window.confirm('Are you sure you want to delete this medication?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/medications/${medicationId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete medication');
+      }
+
+      toast.success('Medication deleted successfully');
+      fetchMedications();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete medication');
     }
   }
 
@@ -262,7 +296,29 @@ export default function MedicationsPage() {
               <div key={medication._id} className="bg-white rounded-lg shadow-sm p-6">
                 <div className="flex justify-between items-start mb-4">
                   <h3 className="text-lg font-medium text-gray-900">{medication.name}</h3>
-                  <span className={`px-2 py-1 text-sm rounded-full ${
+                  <button
+                    onClick={() => handleDelete(medication._id)}
+                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                    title="Delete medication"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                  </button>
+                </div>
+                <p className="text-gray-600 mb-1">Dosage: {medication.dosage}</p>
+                <p className="text-gray-600 mb-1">Frequency: {medication.frequency}</p>
+                <p className="text-gray-600 mb-2">
+                  Next dose: {medication.nextDoseTime ? new Date(medication.nextDoseTime).toLocaleString() : 'Not scheduled'}
+                </p>
+                <div className="flex justify-between items-center mt-4">
+                  <Link
+                    href={`/medications/${medication._id}`}
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    View Details
+                  </Link>
+                  <span className={`px-2 py-1 rounded-full text-sm ${
                     medication.nextDoseTime && new Date(medication.nextDoseTime) < new Date()
                       ? 'bg-red-100 text-red-800'
                       : 'bg-blue-100 text-blue-800'
@@ -270,18 +326,9 @@ export default function MedicationsPage() {
                     {medication.nextDoseTime ? getTimeUntilNextDose(medication.nextDoseTime) : 'No schedule'}
                   </span>
                 </div>
-                <p className="text-gray-600 mb-1">Dosage: {medication.dosage}</p>
-                <p className="text-gray-600 mb-1">Frequency: {medication.frequency}</p>
-                <p className="text-gray-600 mb-1">Next dose: {
-                  medication.nextDoseTime 
-                    ? new Date(medication.nextDoseTime).toLocaleString()
-                    : 'Not scheduled'
-                }</p>
-                {medication.instructions && (
-                  <p className="text-sm text-gray-500 mt-2">{medication.instructions}</p>
-                )}
               </div>
             ))}
+            
           </div>
         )}
       </div>
