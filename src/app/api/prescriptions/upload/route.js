@@ -33,20 +33,21 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload to Cloudinary
+    // Upload to Cloudinary with basic options
     const uploadResponse = await new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_stream({
-        resource_type: 'auto',
+      const uploadStream = cloudinary.uploader.upload_stream({
+        resource_type: 'raw',
         folder: 'prescriptions'
       }, (error, result) => {
         if (error) reject(error);
         else resolve(result);
-      }).end(buffer);
+      });
+
+      uploadStream.end(buffer);
     });
 
     await dbConnect();
 
-    // Create prescription record
     const prescription = await Prescription.create({
       userId: decoded.userId,
       filename: file.name,
@@ -59,7 +60,7 @@ export async function POST(request) {
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to upload prescription' },
+      { error: 'Failed to upload prescription' },
       { status: 500 }
     );
   }

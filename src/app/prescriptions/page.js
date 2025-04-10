@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 
 export default function PrescriptionsPage() {
@@ -17,9 +18,12 @@ export default function PrescriptionsPage() {
       const response = await fetch('/api/prescriptions', {
         credentials: 'include'
       });
+
       if (!response.ok) throw new Error('Failed to fetch prescriptions');
+      
       const data = await response.json();
       setPrescriptions(data);
+      console.log('Prescription data:', prescriptions);
     } catch (error) {
       console.error('Fetch error:', error);
       toast.error('Failed to load prescriptions');
@@ -68,29 +72,63 @@ export default function PrescriptionsPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete prescription');
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete prescription');
       }
 
       toast.success('Prescription deleted successfully');
-      fetchPrescriptions();
+      // Remove the deleted prescription from state
+      setPrescriptions(prescriptions.filter(p => p._id !== prescriptionId));
     } catch (error) {
       console.error('Delete error:', error);
-      toast.error('Failed to delete prescription');
+      toast.error(error.message);
     }
   }
 
+  const handleViewPDF = (url) => {
+    window.open(url, '_blank');
+  };
+
+  const handleDownloadPDF = async (prescription) => {
+    try {
+      // Fetch the PDF file
+      const response = await fetch(prescription.url);
+      if (!response.ok) throw new Error('Failed to download PDF');
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = prescription.filename || 'prescription.pdf'; // Use original filename or fallback
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to download PDF');
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Prescriptions</h1>
+          <h1 className="text-3xl font-bold text-gray-900">My Prescriptions</h1>
           <label className="relative cursor-pointer">
             <input
               type="file"
               className="sr-only"
               onChange={handleUpload}
               disabled={isUploading}
-              accept="*/*"
+              accept=".pdf"  // Change this line to only accept PDFs
             />
             <span className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
               isUploading ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'
@@ -112,33 +150,42 @@ export default function PrescriptionsPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {prescriptions.map((prescription) => (
-              <div key={prescription._id} className="bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start">
+              <div key={prescription._id} className="bg-white rounded-lg shadow-sm p-6">
+                <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-lg font-medium text-gray-900 mb-2">{prescription.filename}</p>
-                    <p className="text-sm text-gray-500 mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">{prescription.filename}</h3>
+                    <p className="text-sm text-gray-500">
                       Uploaded on {new Date(prescription.createdAt).toLocaleDateString()}
                     </p>
                   </div>
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => handleDownloadPDF(prescription)}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-5 w-5 mr-2" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" 
+                      />
+                    </svg>
+                    Download PDF
+                  </button>
                   <button
                     onClick={() => handleDelete(prescription._id)}
-                    className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
-                    title="Delete prescription"
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
+                    Delete
                   </button>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <a
-                    href={prescription.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:text-blue-700"
-                  >
-                    View
-                  </a>
                 </div>
               </div>
             ))}

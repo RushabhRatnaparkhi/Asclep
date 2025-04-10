@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
-import Medication from '@/models/Medication';
+import Prescription from '@/models/Prescription';
 import { v2 as cloudinary } from 'cloudinary';
 
 cloudinary.config({
@@ -10,8 +10,9 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, context) {
   try {
+    const id = context.params.id;
     const token = request.cookies.get('token')?.value;
     
     if (!token) {
@@ -31,10 +32,10 @@ export async function DELETE(request, { params }) {
 
     await dbConnect();
 
-    const prescription = await Medication.findOne({
-      _id: params.id,
-      userId: decoded.userId,
-      'prescriptionFile.url': { $exists: true }
+    // Find the prescription first to get the Cloudinary public ID
+    const prescription = await Prescription.findOne({
+      _id: id,
+      userId: decoded.userId
     });
 
     if (!prescription) {
@@ -44,13 +45,21 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    // Delete file from Cloudinary
-    if (prescription.prescriptionFile?.url) {
-      const publicId = prescription.prescriptionFile.url.split('/').pop().split('.')[0];
-      await cloudinary.uploader.destroy(publicId);
+    // Delete from Cloudinary
+    try {
+      await cloudinary.uploader.destroy(prescription.publicId, {
+        resource_type: 'raw'
+      });
+    } catch (cloudinaryError) {
+      console.error('Cloudinary deletion error:', cloudinaryError);
+      // Continue with database deletion even if Cloudinary deletion fails
     }
 
-    await prescription.deleteOne();
+    // Delete from database
+    await Prescription.findOneAndDelete({
+      _id: id,
+      userId: decoded.userId
+    });
 
     return NextResponse.json(
       { message: 'Prescription deleted successfully' },

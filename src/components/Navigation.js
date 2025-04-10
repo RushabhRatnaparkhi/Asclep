@@ -32,17 +32,39 @@ export default function Navigation() {
               {/* Desktop Navigation */}
               <div className="hidden sm:flex sm:items-center sm:space-x-8">
                 {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`px-3 py-2 rounded-md text-sm font-medium ${
-                      pathname === item.href
-                        ? 'text-blue-600 bg-blue-50'
-                        : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
+                  <div key={item.href}>
+                    {item.label === 'Profile' ? (
+                      <Link
+                        href="/profile"
+                        className="text-gray-700 hover:bg-gray-100 hover:text-gray-900 group flex items-center px-4 py-2 text-sm"
+                      >
+                        <svg
+                          className="mr-3 h-5 w-5 text-gray-400 group-hover:text-gray-500"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        Profile
+                      </Link>
+                    ) : (
+                      <Link
+                        href={item.href}
+                        className={`px-3 py-2 rounded-md text-sm font-medium ${
+                          pathname === item.href
+                            ? 'text-blue-600 bg-blue-50'
+                            : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        {item.label}
+                      </Link>
+                    )}
+                  </div>
                 ))}
                 <button
                   onClick={async () => {
