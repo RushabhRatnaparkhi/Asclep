@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
 import Medication from '@/models/Medication';
+import Activity from '@/models/Activity';
 
 export async function GET(request) {
   try {
@@ -75,6 +76,14 @@ export async function POST(request) {
     const medication = await Medication.create({
       ...data,
       userId: decoded.userId
+    });
+
+    // Create activity record
+    await Activity.create({
+      userId: decoded.userId,
+      type: 'MEDICATION_ADDED',
+      description: `Added medication: ${medication.name}`,
+      medicationId: medication._id
     });
 
     return NextResponse.json(medication, { status: 201 });

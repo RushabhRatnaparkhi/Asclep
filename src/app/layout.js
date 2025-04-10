@@ -11,7 +11,9 @@ export default function RootLayout({ children }) {
       <body>
         <Navigation />
         <MedicationReminder />
-        {children}
+        <main className="pb-20"> {/* Add padding to bottom */}
+          {children}
+        </main>
         <Toaster />
       </body>
     </html>

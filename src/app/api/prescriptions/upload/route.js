@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
 import Prescription from '@/models/Prescription';
 import { v2 as cloudinary } from 'cloudinary';
+import Activity from '@/models/Activity';
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -53,6 +54,14 @@ export async function POST(request) {
       filename: file.name,
       url: uploadResponse.secure_url,
       contentType: file.type
+    });
+
+    // Create activity record
+    await Activity.create({
+      userId: decoded.userId,
+      type: 'PRESCRIPTION_UPLOADED',
+      description: `Uploaded prescription: ${file.name}`,
+      prescriptionId: prescription._id
     });
 
     return NextResponse.json(prescription, { status: 201 });
