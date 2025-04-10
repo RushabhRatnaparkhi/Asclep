@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-hot-toast';
 import { getTimeUntilNextDose } from '@/utils/timeUtils';
 
 export default function MedicationDetailsPage({ params }) {
+  const id = use(params).id;  // Using React.use() to unwrap params
   const router = useRouter();
   const [medication, setMedication] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,7 +14,7 @@ export default function MedicationDetailsPage({ params }) {
   useEffect(() => {
     async function fetchMedicationDetails() {
       try {
-        const response = await fetch(`/api/medications/${params.id}`, {
+        const response = await fetch(`/api/medications/${id}`, {
           credentials: 'include'
         });
 
@@ -31,7 +32,7 @@ export default function MedicationDetailsPage({ params }) {
     }
 
     fetchMedicationDetails();
-  }, [params.id, router]);
+  }, [id, router]);
 
   if (isLoading) {
     return (

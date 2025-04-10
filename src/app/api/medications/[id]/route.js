@@ -3,8 +3,9 @@ import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
 import Medication from '@/models/Medication';
 
-export async function DELETE(request, { params }) {
+export async function DELETE(request, context) {
   try {
+    const id = context.params.id;  // Access id directly from context
     const token = request.cookies.get('token')?.value;
     
     if (!token) {
@@ -25,7 +26,7 @@ export async function DELETE(request, { params }) {
     await dbConnect();
 
     const medication = await Medication.findOne({
-      _id: params.id,
+      _id: id,
       userId: decoded.userId
     });
 

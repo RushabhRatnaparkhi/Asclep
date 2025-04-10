@@ -1,3 +1,5 @@
+'use client';
+
 import './globals.css'
 import Navigation from '@/components/Navigation'
 import { Toaster } from 'react-hot-toast'
@@ -8,9 +10,9 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         <Navigation />
+        <MedicationReminder />
         {children}
         <Toaster />
-        <MedicationReminder />
       </body>
     </html>
   )
