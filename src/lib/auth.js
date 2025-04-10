@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -8,13 +7,10 @@ if (!JWT_SECRET) {
 }
 
 export function createToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
 }
 
-export async function verifyAuth() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
-
+export async function verifyToken(token) {
   if (!token) {
     return null;
   }
@@ -23,6 +19,16 @@ export async function verifyAuth() {
     const decoded = jwt.verify(token, JWT_SECRET);
     return decoded;
   } catch (error) {
+    console.error('Token verification failed:', error.message);
+    return null;
+  }
+}
+
+export function getTokenData(token) {
+  try {
+    return jwt.decode(token);
+  } catch (error) {
+    console.error('Token decode failed:', error.message);
     return null;
   }
 }

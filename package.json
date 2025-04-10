@@ -9,12 +9,14 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@tailwindcss/forms": "^0.5.10",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.6.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.7",
     "next": "15.1.6",
     "next-cloudinary": "^6.16.0",
+    "next-navigation": "^1.0.6",
     "node-schedule": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -1,66 +1,34 @@
 import { NextResponse } from 'next/server';
-import { verifyAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
 import dbConnect from '@/lib/dbConnect';
-import Prescription from '@/models/Prescription';
+import Medication from '@/models/Medication';
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const user = await verifyAuth();
-    await dbConnect();
+    const token = request.cookies.get('token')?.value;
     
-    const prescriptions = await Prescription.find({ userId: user.userId });
-    return NextResponse.json({ prescriptions: prescriptions || [] });
-  } catch (error) {
-    return NextResponse.json({ 
-      error: error.message,
-      prescriptions: [] 
-    }, { 
-      status: error.message === 'Invalid token' ? 401 : 500 
-    });
-  }
-}
+    if (!token) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
 
-export async function POST(request) {
-  try {
-    const user = await verifyAuth();
+    const decoded = await verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
     await dbConnect();
 
-    const formData = await request.formData();
-    let prescriptionData = {};
-    let imageUrl = null;
+    const prescriptions = await Medication.find({ 
+      userId: decoded.userId,
+      'prescriptionFile.url': { $exists: true } 
+    }).select('prescriptionFile createdAt');
 
-    // Handle image upload if present
-    const imageFile = formData.get('image');
-    if (imageFile) {
-      const response = await fetch(process.env.CLOUDINARY_UPLOAD_URL, {
-        method: 'POST',
-        body: formData
-      });
-      const data = await response.json();
-      imageUrl = data.secure_url;
-    }
+    return NextResponse.json(prescriptions);
 
-    // Get other form fields
-    prescriptionData = {
-      userId: user.userId,
-      medication: formData.get('medication'),
-      dosage: formData.get('dosage'),
-      frequency: formData.get('frequency'),
-      startDate: formData.get('startDate'),
-      instructions: formData.get('instructions'),
-      prescribedBy: formData.get('prescribedBy'),
-    };
-
-    if (imageUrl) {
-      prescriptionData.imageUrl = imageUrl;
-    }
-
-    const prescription = await Prescription.create(prescriptionData);
-    return NextResponse.json(prescription, { status: 201 });
   } catch (error) {
-    console.error('Failed to create prescription:', error);
+    console.error('Prescriptions API error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to create prescription' },
+      { error: 'Failed to fetch prescriptions' },
       { status: 500 }
     );
   }

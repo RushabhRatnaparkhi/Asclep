@@ -1,41 +1,68 @@
 import { NextResponse } from 'next/server';
-import { createToken } from '@/lib/auth';
-import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
-import User from '@/models/User';
 import dbConnect from '@/lib/dbConnect';
+import User from '@/models/User';
+import { createToken } from '@/lib/auth';
 
 export async function POST(request) {
   try {
     await dbConnect();
+    
     const { email, password } = await request.json();
 
-    // Find user by email
+    // Validate input
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      );
+    }
+
+    // Find user
     const user = await User.findOne({ email });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    // Create token with user data
+    // Verify password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      );
+    }
+
+    // Create token
     const token = createToken({
-      userId: user._id.toString(), // Make sure to convert ObjectId to string
+      userId: user._id.toString(),
       email: user.email,
       name: user.name
     });
 
-    const response = NextResponse.json({ success: true });
-    
-    response.cookies.set({
-      name: 'token',
-      value: token,
+    // Create response
+    const response = NextResponse.json(
+      { 
+        message: 'Logged in successfully',
+        user: {
+          name: user.name,
+          email: user.email
+        },
+        redirectUrl: '/dashboard'  // Add this line
+      },
+      { status: 200 }
+    );
+
+    // Set cookie
+    response.cookies.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 // 7 days
+      maxAge: 60 * 60 * 24 * 7 // 7 days
     });
 
     return response;
@@ -43,8 +70,8 @@ export async function POST(request) {
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
-      { error: error.message },
-      { status: 401 }
+      { error: 'Failed to login' },
+      { status: 500 }
     );
   }
 }

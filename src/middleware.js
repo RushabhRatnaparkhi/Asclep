@@ -1,24 +1,31 @@
 import { NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
 
-export function middleware(request) {
-  const isPublicPath = request.nextUrl.pathname === '/login' || 
-                      request.nextUrl.pathname === '/register' ||
-                      request.nextUrl.pathname.startsWith('/api/auth');
+export async function middleware(request) {
+  // Define public and protected paths
+  const publicPaths = ['/', '/login', '/register'];
+  const isPublicPath = publicPaths.includes(request.nextUrl.pathname);
 
-  const hasToken = request.cookies.has('token');
+  // Get token from cookies
+  const token = request.cookies.get('token')?.value;
 
-  // Allow public paths without authentication
-  if (isPublicPath) {
-    return NextResponse.next();
-  }
-
-  // No token, redirect to login
-  if (!hasToken) {
+  // Redirect to login if accessing protected route without token
+  if (!isPublicPath && !token) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // Has token, allow request
+  // Redirect to dashboard if accessing public route with valid token
+  if (isPublicPath && token) {
+    try {
+      const isValidToken = await verifyToken(token);
+      if (isValidToken) {
+        return NextResponse.redirect(new URL('/dashboard', request.url));
+      }
+    } catch (error) {
+      console.error('Token verification failed:', error);
+    }
+  }
+
   return NextResponse.next();
 }
 
@@ -26,13 +33,11 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api/auth (auth API routes)
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - login
-     * - register
      */
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|login|register).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
